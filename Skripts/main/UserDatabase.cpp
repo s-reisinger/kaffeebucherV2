@@ -117,7 +117,7 @@ bool mapCardToUser(const String &cardId, const String &userId)
     return true;
 }
 
-bool updateCreditByUserId(String userId, int delta)
+bool updateCreditByUserId(String userId, int delta,  String &message)
 {
     File readFile = SPIFFS.open(USER_FILE_PATH, FILE_READ);
     if (!readFile)
@@ -158,10 +158,15 @@ bool updateCreditByUserId(String userId, int delta)
         {
             userFound = true;
             int newCredit = existingCredit + delta;
+            message = username + "\n" + newCredit + " Kaffee";
             tempFile.println(String(existingUserId) + ";" + username + ";" + String(newCredit));
         }
         else
         {
+          if(userId == -1) {
+            message = "Card not \n mapped!";
+          }
+            message = "User not \n found!";
             tempFile.println(line);
         }
     }
@@ -182,14 +187,14 @@ bool updateCreditByUserId(String userId, int delta)
     return userFound;
 }
 
-bool updateCreditByCardId(String &cardId, int delta)
+bool updateCreditByCardId(String &cardId, int delta, String &message)
 {
     String userId;
     if (getUserIdByCardId(cardId, userId))
     {
-        return updateCreditByUserId(userId, delta);
+        return updateCreditByUserId(userId, delta, message);
     }
-
+    message = "Unknown \n Card!";
     // Add card with no user if not found
     return mapCardToUser(cardId, "-1");
 }

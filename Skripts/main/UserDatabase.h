@@ -15,10 +15,10 @@
      bool mapCardToUser(const String &cardId, const String &userId);
 
     // Updates the user's credit by userId with the given delta (positive or negative)
-     bool updateCreditByUserId(String userId, int delta);
+     bool updateCreditByUserId(String userId, int delta, String &message);
 
     // Updates the user's credit using cardId, adds the card to unmapped if not found
-     bool updateCreditByCardId(String &cardId, int delta);
+     bool updateCreditByCardId(String &cardId, int delta,  String &message);
 
     // Retrieves the userId linked to the provided cardId
      bool getUserIdByCardId(String &cardId, String &userId);

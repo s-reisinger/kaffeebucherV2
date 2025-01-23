@@ -177,8 +177,8 @@ static void handleUpdateCredit()
         if (server.hasArg("userId") && server.hasArg("delta")) {
             String userId = server.arg("userId");
             int delta = server.arg("delta").toInt(); // Convert to int
-
-            if (updateCreditByUserId(userId, delta)) {
+            String message = "";
+            if (updateCreditByUserId(userId, delta, message)) {
                 // Success => redirect back to home
                 server.sendHeader("Location", "/");
                 server.send(303); // 303: "See Other"
