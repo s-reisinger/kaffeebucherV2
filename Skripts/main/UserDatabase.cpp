@@ -156,17 +156,20 @@ bool updateCreditByUserId(String userId, int delta,  String &message)
 
         if (existingUserId == userId)
         {
-            userFound = true;
             int newCredit = existingCredit + delta;
-            message = username + "\n" + newCredit + " Kaffee";
-            tempFile.println(String(existingUserId) + ";" + username + ";" + String(newCredit));
+            if(newCredit < 0) {
+              message = "No Credit \n left!";
+            } else {
+              userFound = true;
+              message = username + "\n" + newCredit + " Kaffee";
+              tempFile.println(String(existingUserId) + ";" + username + ";" + String(newCredit));
+            }
         }
         else
         {
-          if(userId == -1) {
+          if(userId == "-1") {
             message = "Card not \n mapped!";
           }
-            message = "User not \n found!";
             tempFile.println(line);
         }
     }
