@@ -57,13 +57,27 @@ void setup() {
       Serial.println(F("SSD1306 allocation failed"));
       for(;;);
     }
-    delay(2000);
     display.clearDisplay();
     display.setTextSize(2);
     display.setTextColor(WHITE);
     displayText("Ready...");
+    
     // 3. Setup Web Server
     setupWebServer();
+
+    //Play start sequenze
+    pinMode(17, INPUT);
+    digitalWrite(17, HIGH);
+    delay(250);
+    digitalWrite(17, LOW);
+    delay(250);
+    digitalWrite(17, High);
+    delay(250);
+    digitalWrite(17, LOW);
+    delay(250);
+    digitalWrite(17, High);
+    delay(250);
+    digitalWrite(17, LOW);
 }
 
 void loop() {
