@@ -66,18 +66,19 @@ void setup() {
     setupWebServer();
 
     //Play start sequenze
-    pinMode(17, INPUT);
+    pinMode(17, OUTPUT);
     digitalWrite(17, HIGH);
-    delay(250);
+    delay(200);
     digitalWrite(17, LOW);
-    delay(250);
-    digitalWrite(17, High);
-    delay(250);
+    delay(200);
+    digitalWrite(17, HIGH);
+    delay(200);
     digitalWrite(17, LOW);
-    delay(250);
-    digitalWrite(17, High);
-    delay(250);
+    delay(200);
+    digitalWrite(17, HIGH);
+    delay(200);
     digitalWrite(17, LOW);
+    Serial.println("Done Initalize!");
 }
 
 void loop() {
@@ -114,7 +115,6 @@ void handleReadCard() {
   
   String message = "noMessage";
   updateCreditByCardId(cardId, -1, message);
-  Serial.println(cardId);
   displayText(message);
 
   // Schedule the "Ready..." message update after 3 seconds
@@ -122,6 +122,10 @@ void handleReadCard() {
   resetMessageScheduled = true;
 
   lastCardId = cardId;
+
+  digitalWrite(17, HIGH);
+  delay(200);
+  digitalWrite(17, LOW);
 
   rfid.PICC_HaltA();
 }
@@ -135,8 +139,8 @@ String getCardId(byte *buffer, byte bufferSize) {
 }
 
 void displayText(String text) {
-      display.clearDisplay();
-      display.setCursor(0, 10);
+    display.clearDisplay();
+    display.setCursor(0, 10);
     display.println(text);
     display.display();
 }
