@@ -8,6 +8,8 @@
     // Initializes the SPIFFS file system
      bool initFileSystem();
 
+     void reset(String password);
+
     // Adds a new user with a unique ID; returns the assigned userId
      bool addUser(const String &username);
 

@@ -33,6 +33,7 @@ bool resetMessageScheduled = false; // To track if "Ready..." is scheduled
 String lastCardId = "";// Variable to store the last read card ID
 
 void setup() {
+  delay(1000);
     Serial.begin(9600);
     Serial.println("starting initFileSystem");
     // 1. Init SPIFFS for our "database"
@@ -57,10 +58,6 @@ void setup() {
       Serial.println(F("SSD1306 allocation failed"));
       for(;;);
     }
-    display.clearDisplay();
-    display.setTextSize(2);
-    display.setTextColor(WHITE);
-    displayText("Ready...");
     
     // 3. Setup Web Server
     setupWebServer();
@@ -78,7 +75,11 @@ void setup() {
     digitalWrite(17, HIGH);
     delay(200);
     digitalWrite(17, LOW);
-    Serial.println("Done Initalize!");
+
+    display.clearDisplay();
+    display.setTextSize(2);
+    display.setTextColor(WHITE);
+    displayText("Ready...");
 }
 
 void loop() {
@@ -117,15 +118,15 @@ void handleReadCard() {
   updateCreditByCardId(cardId, -1, message);
   displayText(message);
 
-  // Schedule the "Ready..." message update after 3 seconds
   lastUpdateTime = millis();
   resetMessageScheduled = true;
 
   lastCardId = cardId;
-
-  digitalWrite(17, HIGH);
-  delay(200);
-  digitalWrite(17, LOW);
+  if (message.indexOf("Kaffee") != -1) {
+    digitalWrite(17, HIGH);
+    delay(200);
+    digitalWrite(17, LOW);
+}
 
   rfid.PICC_HaltA();
 }

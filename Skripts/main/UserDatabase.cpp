@@ -3,6 +3,8 @@
 static const char *USER_FILE_PATH = "/users.txt";
 static const char *CARD_FILE_PATH = "/cards.txt";
 
+#define RESET_PASSWORD "AigI3e2GKT83s5i" // Change this to your desired password
+
 bool initFileSystem()
 {
     if (!SPIFFS.begin(true))
@@ -12,6 +14,24 @@ bool initFileSystem()
     }
     Serial.println("SPIFFS Mount OK!");
     return true;
+}
+
+
+void reset(String password) {
+    if (password != RESET_PASSWORD) {
+        Serial.println("Invalid password! Reset aborted.");
+        return;
+    }
+
+    File file;
+
+    file = SPIFFS.open(USER_FILE_PATH, "w");
+    if (file) file.close();
+
+    file = SPIFFS.open(CARD_FILE_PATH, "w");
+    if (file) file.close();
+
+    Serial.println("Files cleared successfully.");
 }
 
 int getNextUserId()

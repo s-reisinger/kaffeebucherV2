@@ -44,15 +44,45 @@ bool initWiFi(const char* ssid, const char* password)
 static void handleRoot()
 {
     String html = F("<!DOCTYPE html><html><head><meta charset='UTF-8'>");
-    html += F("<title>ESP32 User Database</title></head><body>");
-    html += F("<h1>User Database</h1>");
+    html += F("<title>ESP32 User Database</title>");
+    html += F("<style>");
+    html += F("body { font-family: Arial, sans-serif; background-color: #f4f4f4; margin: 0; padding: 20px; text-align: center; }");
+    html += F(".container { width: 90%; max-width: 800px; margin: auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1); }");
+    html += F("h1, h2 { color: #333; }");
+    html += F("table { width: 100%; border-collapse: collapse; margin-top: 10px; cursor: pointer; }");
+    html += F("th, td { padding: 10px; border: 1px solid #ddd; text-align: left; }");
+    html += F("th { background: #007BFF; color: white; }");
+    html += F("tr:nth-child(even) { background: #f9f9f9; }");
+    html += F("tr:hover { background: #d3e3fc; }");
+    html += F("form { margin-top: 20px; padding: 15px; background: #f8f9fa; border-radius: 5px; }");
+    html += F("input[type='text'], input[type='number'] { width: 80%; padding: 8px; margin: 5px 0; border: 1px solid #ccc; border-radius: 4px; }");
+    html += F("input[type='submit'] { background: #007BFF; color: white; border: none; padding: 10px; cursor: pointer; border-radius: 5px; width: 85%; }");
+    html += F("input[type='submit']:hover { background: #0056b3; }");
+    html += F("hr { margin: 20px 0; border: 1px solid #ddd; }");
+    html += F("</style>");
+    
+    // JavaScript for Clickable Rows
+    html += F("<script>");
+    html += F("function fillUserFields(userId) {");
+    html += F("document.getElementById('userId-map').value = userId;");
+    html += F("document.getElementById('userId-credit').value = userId;");
+    html += F("}");
+    
+    html += F("function fillCardField(cardId) {");
+    html += F("document.getElementById('cardId').value = cardId;");
+    html += F("}");
+    html += F("</script>");
+
+    html += F("</head><body>");
+    
+    html += F("<div class='container'>");
+    html += F("<h1>ESP32 User Database</h1>");
 
     // Show all users
     String allUsers;
     if (getAllUsers(allUsers)) {
         html += F("<h2>All Users</h2>");
-        html += F("<table border='1' cellpadding='5' cellspacing='0'>");
-        html += F("<tr><th>User ID</th><th>Username</th><th>Credit</th></tr>");
+        html += F("<table><tr><th>User ID</th><th>Username</th><th>Credit</th></tr>");
 
         int startIndex = 0;
         while (true) {
@@ -71,19 +101,20 @@ static void handleRoot()
             String username = line.substring(firstComma + 1, secondComma);
             String credit = line.substring(secondComma + 1);
 
-            html += "<tr><td>" + userId + "</td><td>" + username + "</td><td>" + credit + "</td></tr>";
+            html += "<tr onclick='fillUserFields(\"" + userId + "\")'>";
+            html += "<td>" + userId + "</td><td>" + username + "</td><td>" + credit + "</td></tr>";
         }
         html += F("</table>");
     } else {
         html += F("<p>Could not read users from database.</p>");
     }
+    html += F("<hr>");
 
     // Show unmapped cards
     String unmappedCards;
     if (getUnmappedCards(unmappedCards)) {
         html += F("<h2>Unmapped Cards</h2>");
-        html += F("<table border='1' cellpadding='5' cellspacing='0'>");
-        html += F("<tr><th>Card ID</th></tr>");
+        html += F("<table><tr><th>Card ID</th></tr>");
 
         int startIndex = 0;
         while (true) {
@@ -93,37 +124,41 @@ static void handleRoot()
             String cardId = unmappedCards.substring(startIndex, lineEnd);
             startIndex = lineEnd + 1;
 
-            html += "<tr><td>" + cardId + "</td></tr>";
+            html += "<tr onclick='fillCardField(\"" + cardId + "\")'>";
+            html += "<td>" + cardId + "</td></tr>";
         }
         html += F("</table>");
     } else {
         html += F("<p>Could not read unmapped cards from database.</p>");
     }
+    html += F("<hr>");
 
     // Form to add a user
     html += F("<h2>Add a New User</h2>");
     html += F("<form action='/addUser' method='POST'>");
-    html += F("Username: <input type='text' name='username' required>");
+    html += F("Username: <input type='text' name='username' required><br>");
     html += F("<input type='submit' value='Add User'>");
     html += F("</form>");
+    html += F("<hr>");
 
     // Form to map a card to a user
     html += F("<h2>Map a Card to a User</h2>");
     html += F("<form action='/mapCard' method='POST'>");
-    html += F("Card ID: <input type='text' name='cardId' required> ");
-    html += F("User ID: <input type='text' name='userId' required> ");
+    html += F("Card ID: <input type='text' id='cardId' name='cardId' required><br>");
+    html += F("User ID: <input type='text' id='userId-map' name='userId' required><br>");
     html += F("<input type='submit' value='Map Card'>");
     html += F("</form>");
+    html += F("<hr>");
 
     // Form to update credit
     html += F("<h2>Update Credit</h2>");
     html += F("<form action='/updateCredit' method='POST'>");
-    html += F("User ID: <input type='text' name='userId' required> ");
-    html += F("Delta: <input type='number' name='delta' required> ");
+    html += F("User ID: <input type='text' id='userId-credit' name='userId' required><br>");
+    html += F("Delta: <input type='number' name='delta' required><br>");
     html += F("<input type='submit' value='Update Credit'>");
     html += F("</form>");
 
-    html += F("</body></html>");
+    html += F("</div></body></html>");
 
     // Send the HTML to the client
     server.send(200, "text/html", html);
@@ -195,6 +230,19 @@ static void handleUpdateCredit()
     server.send(400, "text/plain", "Bad Request");
 }
 
+static void handleReset() {
+  if(server.method() == HTTP_DELETE) {
+    if(server.hasArg("password")) {
+      String password = server.arg("password");
+      reset(password);
+      server.sendHeader("Location", "/");
+      server.send(303); // 303: "See Other"
+       return;
+    }
+  }
+}
+
+
 // --------------------------------------------------------------------
 // 3. Setup and Loop for WebServer
 // --------------------------------------------------------------------
@@ -205,6 +253,7 @@ void setupWebServer()
     server.on("/addUser", HTTP_POST, handleAddUser);
     server.on("/mapCard", HTTP_POST, handleMapCard);
     server.on("/updateCredit", HTTP_POST, handleUpdateCredit);
+    server.on("/reset", HTTP_DELETE, handleReset);
 
     // Start server
     server.begin();
