@@ -5,32 +5,37 @@
 #include <FS.h>
 #include <SPIFFS.h>
 
-    // Initializes the SPIFFS file system
-     bool initFileSystem();
+    #pragma once
+#include <Arduino.h>
 
-     void reset(String password);
+  // -------------------------
+  // Initialization & Resets
+  // -------------------------
+  bool initFileSystem();
+  void reset(String password);
 
-    // Adds a new user with a unique ID; returns the assigned userId
-     bool addUser(const String &username);
+  // -------------------------
+  // User & Card Management
+  // -------------------------
+  bool addUser(const String &username);
+  bool mapCardToUser(const String &cardId, const String &userId);
+  bool updateCreditByUserId(String userId, int delta, String &message);
+  bool updateCreditByCardId(String &cardId, int delta, String &message);
+  bool getUserIdByCardId(String &cardId, String &userId);
 
-    // Maps a cardId to an existing userId
-     bool mapCardToUser(const String &cardId, const String &userId);
+  bool getUnmappedCards(String &unmappedCards);
+  bool getAllUsers(String &usersList);
+  bool deleteCardById(const String &cardId);
 
-    // Updates the user's credit by userId with the given delta (positive or negative)
-     bool updateCreditByUserId(String userId, int delta, String &message);
-
-    // Updates the user's credit using cardId, adds the card to unmapped if not found
-     bool updateCreditByCardId(String &cardId, int delta,  String &message);
-
-    // Retrieves the userId linked to the provided cardId
-     bool getUserIdByCardId(String &cardId, String &userId);
-
-    // Retrieves all cards that have no associated user (userId = -1)
-     bool getUnmappedCards(String &unmappedCards);
-
-    // Generates the next available userId
-     int getNextUserId();
-
-     bool getAllUsers(String &usersList);
+  // -------------------------
+  // Product Management
+  // -------------------------
+  bool loadProducts();
+  bool saveProducts();
+  bool addProduct(const String &name, int priceCents);
+  bool deleteProduct(int index);
+  bool getAllProducts(String &productsList); // e.g. "Name;100\nLatte;150\n..."
+  int  getProductCount();
+  bool getProductInfo(int index, String &name, int &priceCents);
 
 #endif // USER_DATABASE_H

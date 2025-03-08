@@ -7,141 +7,237 @@
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
 
-#define SCREEN_WIDTH 128 // OLED display width, in pixels
-#define SCREEN_HEIGHT 64 // OLED display height, in pixels
-
-// Declaration for an SSD1306 display connected to I2C (SDA, SCL pins)
-#define OLED_RESET     -1 // Reset pin # (or -1 if sharing Arduino reset pin)
+// ----------------------------
+// OLED Settings
+// ----------------------------
+#define SCREEN_WIDTH 128
+#define SCREEN_HEIGHT 64
+#define OLED_RESET    -1
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 
-#define SS_PIN 14
+// ----------------------------
+// MFRC522 / RFID
+// ----------------------------
+#define SS_PIN  14
 #define RST_PIN 13
- 
-MFRC522 rfid(SS_PIN, RST_PIN); // Instance of the class
+MFRC522 rfid(SS_PIN, RST_PIN); 
+MFRC522::MIFARE_Key key;  
 
-MFRC522::MIFARE_Key key; 
+// ----------------------------
+// Rotary Encoder on GPIO8, 9
+// ----------------------------
+#define ENCODER_CLK  32
+#define ENCODER_DT   33
 
-// Init array that will store new NUID 
-byte nuidPICC[4];
+// We'll poll these in loop
+int lastClkState = HIGH; // or whatever the idle state is
+int currentClkState;
 
-// Replace with your actual WiFi SSID and password
-const char* ssid     = "hurensohn";
+static int selectedProductIndex = 0;
+
+
+const char* ssid = "kaffeev2";
 const char* password = "12345678";
 
-unsigned long lastUpdateTime = 0; // To track the last time the display was updated
-bool resetMessageScheduled = false; // To track if "Ready..." is scheduled
-String lastCardId = "";// Variable to store the last read card ID
+String lastCardId                = "";
+bool showingTemporaryMessage     = false;
+unsigned long lastMessageTime    = 0;    // When we displayed a temporary message
 
-void setup() {
-  delay(1000);
-    Serial.begin(9600);
-    Serial.println("starting initFileSystem");
-    // 1. Init SPIFFS for our "database"
+
+// Forward declarations
+void handleReadCard();
+void displayText(const String &text);
+String getCardId(byte *buffer, byte bufferSize);
+
+void setup()
+{
+    Serial.begin(115200);
+    delay(1000);
+
+    // 1) SPIFFS + load DB
     if (!initFileSystem()) {
         Serial.println("Failed to init SPIFFS. Stopping.");
         while (true) { delay(1000); }
     }
-    // 2. Connect to WiFi
+    loadProducts(); // read existing products from /products.txt
+
+    // 2) WiFi AP
     if (!initWiFi(ssid, password)) {
-        Serial.println("WiFi connection failed, stopping.");
+        Serial.println("WiFi AP failed, stopping.");
         while (true) { delay(1000); }
     }
 
-    SPI.begin(); // Init SPI bus
-    rfid.PCD_Init(); // Init MFRC522 
-
+    // 3) RFID
+    SPI.begin();
+    rfid.PCD_Init();
     for (byte i = 0; i < 6; i++) {
-      key.keyByte[i] = 0xFF;
+        key.keyByte[i] = 0xFF;
     }
 
-    if(!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) { // Address 0x3D for 128x64
-      Serial.println(F("SSD1306 allocation failed"));
-      for(;;);
+    // 4) OLED
+    if(!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
+        Serial.println(F("SSD1306 allocation failed"));
+        while(true);
     }
-    
-    // 3. Setup Web Server
+    display.clearDisplay();
+    display.setTextSize(1);
+    display.setTextColor(WHITE);
+
+    // 5) Web server
     setupWebServer();
 
-    //Play start sequenze
+    // 6) Rotary Encoder pins
+    pinMode(ENCODER_CLK, INPUT);
+    pinMode(ENCODER_DT, INPUT);
+    lastClkState = digitalRead(ENCODER_CLK);
+
+    // 7) Buzzer pins
     pinMode(17, OUTPUT);
-    digitalWrite(17, HIGH);
-    delay(200);
-    digitalWrite(17, LOW);
-    delay(200);
-    digitalWrite(17, HIGH);
-    delay(200);
-    digitalWrite(17, LOW);
-    delay(200);
-    digitalWrite(17, HIGH);
-    delay(200);
     digitalWrite(17, LOW);
 
-    display.clearDisplay();
-    display.setTextSize(2);
-    display.setTextColor(WHITE);
-    displayText("Ready...");
+    // Simple beep sequence to signal startup
+    for (int i = 0; i < 3; i++) {
+        digitalWrite(17, HIGH);
+        delay(150);
+        digitalWrite(17, LOW);
+        delay(150);
+    }
+
+    // Initially show the current product
+    displayCurrentProduct();
 }
 
-void loop() {
+void loop()
+{
+    // Handle web requests
     handleWebServer();
+
+   currentClkState = digitalRead(ENCODER_CLK);
+    // Detect the transition from HIGH -> LOW or LOW -> HIGH
+    if (currentClkState != lastClkState && currentClkState == HIGH) {
+      // If CLK changed, check DT for direction
+      if (digitalRead(ENCODER_DT) == currentClkState) {
+          selectedProductIndex++;
+      } else {
+          selectedProductIndex--;
+      }
+
+      // Clamp
+      if (selectedProductIndex < 0) selectedProductIndex = 0;
+      if (selectedProductIndex >= 3) {
+          selectedProductIndex = 3 - 1;
+      }
+      Serial.println(selectedProductIndex);
+    } 
+    lastClkState = currentClkState;
+    displayCurrentProduct();
+
+    // Check for RFID card
     handleReadCard();
 
-    //to reset display
-    if (resetMessageScheduled && millis() - lastUpdateTime >= 3000) {
-      displayText("Ready...");
-      resetMessageScheduled = false; // Reset the flag
-  }
+    // If a temporary message was displayed, revert to the product after 3s
+    if (showingTemporaryMessage && (millis() - lastMessageTime >= 3000)) {
+        showingTemporaryMessage = false;
+        displayCurrentProduct();
+    }
 }
 
-void handleReadCard() {
-  if (!rfid.PICC_IsNewCardPresent()) {
-    // Reset lastCardId if no card is present
-    lastCardId = ""; 
-    return;
-  }
+// ----------------------------------------------------
+// handleReadCard: Deduct price of selected product
+// and show a temporary message (only the message).
+// ----------------------------------------------------
+void handleReadCard()
+{
+    if (!rfid.PICC_IsNewCardPresent()) {
+        lastCardId = "";
+        return;
+    }
+    if (!rfid.PICC_ReadCardSerial()) {
+        return;
+    }
 
-  if(resetMessageScheduled){
-    return;
-  }
+    String cardId = getCardId(rfid.uid.uidByte, rfid.uid.size);
+    // Avoid re-processing the same card
+    if (cardId == lastCardId) {
+        return;
+    }
 
-  if (!rfid.PICC_ReadCardSerial()) {
-    return;
-  }
+    // 1) Figure out the current product’s price
+    int priceToDeduct = 1; // default if no products
+    if (getProductCount() > 0) {
+        String name;
+        int cost = 0;
+        if (getProductInfo(selectedProductIndex, name, cost)) {
+            priceToDeduct = cost;
+        }
+    }
 
-  String cardId = getCardId(rfid.uid.uidByte, rfid.uid.size);
+    // 2) Deduct that product price from user's credit
+    String message;
+    updateCreditByCardId(cardId, -priceToDeduct, message);
 
-  if (cardId == lastCardId) {
-    return;
-  }
-  
-  String message = "noMessage";
-  updateCreditByCardId(cardId, -1, message);
-  displayText(message);
+    // 3) Show ONLY the message for 3 seconds
+    displayMessageOnly(message);
+    showingTemporaryMessage = true;
+    lastMessageTime         = millis();
+    lastCardId              = cardId;
 
-  lastUpdateTime = millis();
-  resetMessageScheduled = true;
+    // Example beep if message includes "Kaffee"
+    if (message.indexOf("Kaffee") != -1) {
+        digitalWrite(17, HIGH);
+        delay(200);
+        digitalWrite(17, LOW);
+    }
 
-  lastCardId = cardId;
-  if (message.indexOf("Kaffee") != -1) {
-    digitalWrite(17, HIGH);
-    delay(200);
-    digitalWrite(17, LOW);
+    // Halt PICC
+    rfid.PICC_HaltA();
 }
 
-  rfid.PICC_HaltA();
-}
-
-String getCardId(byte *buffer, byte bufferSize) {
-  String cardId = "";
-  for (byte i = 0; i < bufferSize; i++) {
-    cardId = cardId + buffer[i];
-  }
-  return cardId;
-}
-
-void displayText(String text) {
+// ----------------------------------------------------
+// displayCurrentProduct: Show ONLY the product
+// ----------------------------------------------------
+void displayCurrentProduct()
+{
     display.clearDisplay();
-    display.setCursor(0, 10);
-    display.println(text);
+    display.setCursor(0, 0);
+
+    int pCount = getProductCount();
+    if (pCount == 0) {
+        display.println("No product");
+    } else {
+        String pName;
+        int pPrice;
+        if (getProductInfo(selectedProductIndex, pName, pPrice)) {
+            // e.g. "Coffee (100 ct)" or just the name, your choice
+            String line = pName + " (" + String(pPrice) + " ct)";
+            display.println(line);
+        } else {
+            display.println("No product");
+        }
+    }
+
     display.display();
+}
+
+// ----------------------------------------------------
+// displayMessageOnly: Clear display and show ONLY 'msg'
+// ----------------------------------------------------
+void displayMessageOnly(const String &msg)
+{
+    display.clearDisplay();
+    display.setCursor(0, 0);
+    display.println(msg);
+    display.display();
+}
+
+// ----------------------------------------------------
+// getCardId: Convert RFID UID bytes to a String
+// ----------------------------------------------------
+String getCardId(byte *buffer, byte bufferSize)
+{
+    String cardId;
+    for (byte i = 0; i < bufferSize; i++) {
+        cardId += String(buffer[i]);
+    }
+    return cardId;
 }
