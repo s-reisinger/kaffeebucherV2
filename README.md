@@ -1,5 +1,9 @@
 # kaffeebucherV2
 
+## Case
+![image](https://github.com/user-attachments/assets/a677f507-cfe1-41e2-8de8-da08669bd397)
+The Case can be modified here: **[Onshape](https://cad.onshape.com/documents/1f0dee6d78323b198e45b02d/w/3b424e32bea7d99f54bacf88/e/9b85ca8603497c2da58cbfe0?renderMode=0&uiState=67daa8de1124877ad81bda89)**
+
 ## Needed Libraries
 - Adafruit SSD1306
 - MFRC522
