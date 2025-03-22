@@ -37,7 +37,7 @@ static int selectedProductIndex = 0;
 
 
 const char* ssid = "kaffeev2";
-const char* password = "12345678";
+const char* password = "kaffee1945";
 
 String lastCardId                = "";
 bool showingTemporaryMessage     = false;
@@ -123,9 +123,9 @@ void loop()
       }
 
       // Clamp
-      if (selectedProductIndex < 0) selectedProductIndex = 0;
-      if (selectedProductIndex >= 3) {
-          selectedProductIndex = 3 - 1;
+      if (selectedProductIndex < 0) selectedProductIndex = getProductCount() - 1;
+      if (selectedProductIndex >= getProductCount()) {
+          selectedProductIndex = 0;
       }
       Serial.println(selectedProductIndex);
     } 
@@ -209,7 +209,7 @@ void displayCurrentProduct()
         int pPrice;
         if (getProductInfo(selectedProductIndex, pName, pPrice)) {
             // e.g. "Coffee (100 ct)" or just the name, your choice
-            String line = pName + " (" + String(pPrice) + " ct)";
+            String line = pName + " (" + String(pPrice / 100.0, 2) + " €)";
             display.println(line);
         } else {
             display.println("No product");
