@@ -4,6 +4,7 @@ static const char *USER_FILE_PATH = "/users.txt";
 static const char *CARD_FILE_PATH = "/cards.txt";
 static const char *PRODUCT_FILE_PATH= "/products.txt";
 
+// curl -X DELETE "http://192.168.4.1/reset?password=AigI3e2GKT83s5i"
 #define RESET_PASSWORD "AigI3e2GKT83s5i" // Change this to your desired password
 
 struct Product {

@@ -44,7 +44,7 @@ bool initWiFi(const char* ssid, const char* password)
 static void handleRoot()
 {
     String html = F("<!DOCTYPE html><html><head><meta charset='UTF-8'>");
-    html += F("<title>ESP32 User Database</title>");
+    html += F("<title>Kaffeebucher v2</title>");
     html += F("<style>");
     html += F("body { font-family: Arial, sans-serif; background-color: #f4f4f4; margin: 0; padding: 20px; text-align: center; }");
     html += F(".container { width: 90%; max-width: 800px; margin: auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1); }");
@@ -57,13 +57,14 @@ static void handleRoot()
     html += F("input[type='text'], input[type='number'] { width: 80%; padding: 8px; margin: 5px 0; border: 1px solid #ccc; border-radius: 4px; }");
     html += F("input[type='submit'] { background: #007BFF; color: white; border: none; padding: 10px; cursor: pointer; border-radius: 5px; width: 85%; }");
     html += F("input[type='submit']:hover { background: #0056b3; }");
+    html += F("tr { cursor: pointer; }"); // so rows look clickable
     html += F("</style>");
     html += F("</head><body><div class='container'>");
     html += F("<h1>ESP32 User Database</h1>");
 
-    // ---------------------------
-    // 1) Show all users
-    // ---------------------------
+    // -------------------------------------------------------
+    // 1) Show all users (with onclick to setUserId)
+    // -------------------------------------------------------
     {
         String allUsers;
         if (getAllUsers(allUsers)) {
@@ -87,7 +88,12 @@ static void handleRoot()
                 String username = line.substring(firstComma+1, secondComma);
                 String credit   = line.substring(secondComma+1);
 
-                html += "<tr><td>" + userId + "</td><td>" + username + "</td><td>" + credit + "</td></tr>";
+                // Row with onclick
+                html += "<tr onclick=\"setUserId('" + userId + "')\">";
+                html += "<td>" + userId + "</td>";
+                html += "<td>" + username + "</td>";
+                html += "<td>" + credit + "</td>";
+                html += "</tr>";
             }
             html += F("</table>");
         } else {
@@ -96,9 +102,9 @@ static void handleRoot()
     }
     html += F("<hr>");
 
-    // ---------------------------
-    // 2) Show unmapped cards
-    // ---------------------------
+    // -------------------------------------------------------
+    // 2) Show unmapped cards (with onclick to setCardId)
+    // -------------------------------------------------------
     {
         String unmappedCards;
         if (getUnmappedCards(unmappedCards)) {
@@ -113,13 +119,13 @@ static void handleRoot()
                 String cardId = unmappedCards.substring(startIndex, lineEnd);
                 startIndex = lineEnd + 1;
 
-                html += "<tr>";
+                html += "<tr onclick=\"setCardId('" + cardId + "')\">";
                 html += "<td>" + cardId + "</td>";
-                // Delete button for unmapped card
+                // Delete form (stopPropagation so row-click doesn't trigger)
                 html += "<td>";
-                html += "<form action='/deleteUnmappedCard' method='POST'>";
+                html += "<form action='/deleteUnmappedCard' method='POST' style='margin:0;'>";
                 html += "<input type='hidden' name='cardId' value='" + cardId + "'>";
-                html += "<input type='submit' value='Delete'>";
+                html += "<input type='submit' value='Delete' onclick='event.stopPropagation();'>";
                 html += "</form>";
                 html += "</td>";
                 html += "</tr>";
@@ -131,9 +137,9 @@ static void handleRoot()
     }
     html += F("<hr>");
 
-    // ---------------------------
+    // -------------------------------------------------------
     // 3) Add a new user form
-    // ---------------------------
+    // -------------------------------------------------------
     html += F("<h2>Add a New User</h2>");
     html += F("<form action='/addUser' method='POST'>");
     html += F("Username: <input type='text' name='username' required><br>");
@@ -141,9 +147,9 @@ static void handleRoot()
     html += F("</form>");
     html += F("<hr>");
 
-    // ---------------------------
+    // -------------------------------------------------------
     // 4) Map card to user
-    // ---------------------------
+    // -------------------------------------------------------
     html += F("<h2>Map a Card to a User</h2>");
     html += F("<form action='/mapCard' method='POST'>");
     html += F("Card ID: <input type='text' name='cardId' required><br>");
@@ -152,21 +158,20 @@ static void handleRoot()
     html += F("</form>");
     html += F("<hr>");
 
-    // ---------------------------
+    // -------------------------------------------------------
     // 5) Update credit
-    // ---------------------------
-    html += F("<h2>Update Credit</h2>");
+    // -------------------------------------------------------
+    html += F("<h2>Add Credit</h2>");
     html += F("<form action='/updateCredit' method='POST'>");
     html += F("User ID: <input type='text' name='userId' required><br>");
-    html += F("Delta: <input type='number' name='delta' required><br>");
+    html += F("Credit(Cent): <input type='number' name='delta' required><br>");
     html += F("<input type='submit' value='Update Credit'>");
     html += F("</form>");
-
     html += F("<hr>");
 
-    // ---------------------------
+    // -------------------------------------------------------
     // 6) Products Section
-    // ---------------------------
+    // -------------------------------------------------------
     {
         html += F("<h2>Products</h2>");
         html += F("<table><tr><th>Name</th><th>Price (cents)</th><th>Action</th></tr>");
@@ -174,6 +179,8 @@ static void handleRoot()
         String productsList;
         if (getAllProducts(productsList)) {
             int startIdx = 0;
+            static int productIndexCounter = 0;
+            productIndexCounter = 0; // reset each time
             while (true) {
                 int lineEnd = productsList.indexOf('\n', startIdx);
                 if (lineEnd == -1) break;
@@ -185,7 +192,6 @@ static void handleRoot()
                 int sep = line.indexOf(';');
                 if (sep == -1) continue;
 
-                static int productIndexCounter = 0; // not persistent, just for the loop
                 String productName = line.substring(0, sep);
                 String priceStr    = line.substring(sep + 1);
 
@@ -194,23 +200,7 @@ static void handleRoot()
                 html += "<td>" + priceStr + "</td>";
                 // Delete button
                 html += "<td>";
-                html += "<form action='/deleteProduct' method='POST'>";
-                // We'll find an index by scanning. Or we can pass the index by building in a second pass.
-                // Simpler approach: We store an index in separate function getProductInfo?
-                // For demonstration, we do a naive approach:
-                // We'll do an extra pass to find the index. For large lists, you'd do this differently.
-                // But let's do it inline for clarity.
-
-                // We can do simpler: we let the web handler parse the line to find index. 
-                // We'll cheat by including the name and searching in the handler. 
-                // Or we store a hidden "index" parameter if we create the table from the actual function. 
-                // For now, let's do a quick approach: We'll do a separate pass for generating indexes.
-
-                // We'll just do a second function to produce the table with indexes. 
-                // For demonstration, let's assume each line is in the same order as g_products, 
-                // so we track them with a static or global. 
-                // We'll do an external integer we increment each row:
-
+                html += "<form action='/deleteProduct' method='POST' style='margin:0;'>";
                 html += "<input type='hidden' name='index' value='" + String(productIndexCounter) + "'>";
                 html += "<input type='submit' value='Delete'>";
                 html += "</form>";
@@ -222,9 +212,11 @@ static void handleRoot()
         }
         html += F("</table>");
     }
-
     html += F("<hr>");
-    // Form to add a new product
+
+    // -------------------------------------------------------
+    // 7) Add a new product form
+    // -------------------------------------------------------
     html += F("<h3>Add New Product</h3>");
     html += F("<form action='/addProduct' method='POST'>");
     html += F("Name: <input type='text' name='name' required><br>");
@@ -232,9 +224,28 @@ static void handleRoot()
     html += F("<input type='submit' value='Add Product'>");
     html += F("</form>");
 
+    //
+    // FINALLY, our JavaScript in one chunk
+    //
+    html += F("<script>");  
+    // Ensure each line is properly escaped, or just keep it minimal:
+    html += F("function setUserId(id){"
+              "  document.querySelectorAll('input[name=\"userId\"]').forEach(function(field){"
+              "    field.value = id;"
+              "  });"
+              "}");
+    html += F("function setCardId(id){"
+              "  var mapCardField=document.querySelector('form[action=\"/mapCard\"] input[name=\"cardId\"]');"
+              "  if(mapCardField){mapCardField.value=id;}"
+              "}");
+    html += F("</script>");
+
+    // Close up
     html += F("</div></body></html>");
     server.send(200, "text/html", html);
 }
+
+
 
 
 // POST /addUser

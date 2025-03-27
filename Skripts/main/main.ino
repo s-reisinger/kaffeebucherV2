@@ -52,8 +52,6 @@ String getCardId(byte *buffer, byte bufferSize);
 void setup()
 {
     Serial.begin(115200);
-    delay(1000);
-
     // 1) SPIFFS + load DB
     if (!initFileSystem()) {
         Serial.println("Failed to init SPIFFS. Stopping.");
@@ -80,7 +78,7 @@ void setup()
         while(true);
     }
     display.clearDisplay();
-    display.setTextSize(1);
+    display.setTextSize(2);
     display.setTextColor(WHITE);
 
     // 5) Web server
@@ -98,9 +96,9 @@ void setup()
     // Simple beep sequence to signal startup
     for (int i = 0; i < 3; i++) {
         digitalWrite(17, HIGH);
-        delay(150);
+        delay(200);
         digitalWrite(17, LOW);
-        delay(150);
+        delay(200);
     }
 
     // Initially show the current product
@@ -128,9 +126,9 @@ void loop()
           selectedProductIndex = 0;
       }
       Serial.println(selectedProductIndex);
+      displayCurrentProduct();
     } 
     lastClkState = currentClkState;
-    displayCurrentProduct();
 
     // Check for RFID card
     handleReadCard();
@@ -209,7 +207,7 @@ void displayCurrentProduct()
         int pPrice;
         if (getProductInfo(selectedProductIndex, pName, pPrice)) {
             // e.g. "Coffee (100 ct)" or just the name, your choice
-            String line = pName + " (" + String(pPrice / 100.0, 2) + " €)";
+            String line = pName + "\n" + String(pPrice / 100.0, 2) + " EUR";
             display.println(line);
         } else {
             display.println("No product");
