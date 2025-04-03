@@ -150,7 +150,7 @@ void handleReadCard()
         lastCardId = "";
         return;
     }
-    if (!rfid.PICC_ReadCardSerial()) {
+    if (!rfid.PICC_ReadCardSerial() || showingTemporaryMessage) {
         return;
     }
 
@@ -181,7 +181,7 @@ void handleReadCard()
     lastCardId              = cardId;
 
     // Example beep if message includes "Kaffee"
-    if (message.indexOf("Kaffee") != -1) {
+    if (message.indexOf("EUR") != -1) {
         digitalWrite(17, HIGH);
         delay(200);
         digitalWrite(17, LOW);

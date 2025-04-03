@@ -192,7 +192,7 @@ bool updateCreditByUserId(String userId, int delta,  String &message)
               message = "No Credit \n left!";
             } else {
               userFound = true;
-              message = username + ":\n" + String(pPrice / 100.0, 2) + " EUR";
+              message = username + ":\n" + String(newCredit / 100.0, 2) + " EUR";
               tempFile.println(String(existingUserId) + ";" + username + ";" + String(newCredit));
             }
         }

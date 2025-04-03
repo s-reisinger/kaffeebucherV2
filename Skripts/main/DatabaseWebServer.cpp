@@ -161,10 +161,10 @@ static void handleRoot()
     // -------------------------------------------------------
     // 5) Update credit
     // -------------------------------------------------------
-    html += F("<h2>Add Credit</h2>");
+    html += F("<h2>Update Credit</h2>");
     html += F("<form action='/updateCredit' method='POST'>");
     html += F("User ID: <input type='text' name='userId' required><br>");
-    html += F("Credit(Cent): <input type='number' name='delta' required><br>");
+    html += F("Delta: <input type='number' name='delta' required><br>");
     html += F("<input type='submit' value='Update Credit'>");
     html += F("</form>");
     html += F("<hr>");
@@ -244,8 +244,6 @@ static void handleRoot()
     html += F("</div></body></html>");
     server.send(200, "text/html", html);
 }
-
-
 
 
 // POST /addUser
