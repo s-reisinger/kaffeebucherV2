@@ -14,8 +14,8 @@ Here you find everything you need to build it.
  - **[18650 Cell](https://www.akkuteile.de/en/eve-inr18650/26v-with-2550mah-max-7-5a-3-6v-3-7v-lithium-ion-battery_100853_3125)**
  - **[USB-C Breakout board](https://de.aliexpress.com/item/1005007038016920.html?spm=a2g0o.productlist.main.4.2b923073DMgd0S&aem_p4p_detail=202503190439001993094405293200002143647&algo_pvid=af440eae-5092-40dd-821f-feb6c10d7084&algo_exp_id=af440eae-5092-40dd-821f-feb6c10d7084-3&pdp_ext_f=%7B%22order%22%3A%2245%22%2C%22eval%22%3A%221%22%7D&pdp_npi=4%40dis%21EUR%211.92%211.61%21%21%2114.82%2112.45%21%40210388c917423843400513635e54c1%2112000039179955237%21sea%21AT%214052680276%21X&curPageLogUid=u9wT0uriIdee&utparam-url=scene%3Asearch%7Cquery_from%3A&search_p4p_id=202503190439001993094405293200002143647_1)**
 ### Wiring 
- -  **[OLED Display](https://randomnerdtutorials.com/esp32-ssd1306-oled-display-arduino-ide/)**
- -  **[RFID Scanner](https://www.instructables.com/ESP32-With-RFID-Access-Control/)** Here *Pin 22* got changed to *Pin 13* and *Pin 21* got changed to *Pin 14*.
+![image](https://github.com/user-attachments/assets/1bc05d6b-3b50-41a5-b08b-484b70d81df5)
+
 ### Case
 ![image](https://github.com/user-attachments/assets/a677f507-cfe1-41e2-8de8-da08669bd397)
 
